@@ -1,0 +1,78 @@
+- job:
+    project-type: freestyle
+    defaults: global
+    description: 'test 1'
+    disabled: false
+    diplayname: 'test 1 job'
+    name: complex job
+    concurrent: true
+    quit-period: 5
+    retry-count: 3
+    scm:
+        - git:
+             url: https://github.com/kolibox/jjbTest.git
+             branches:
+                 - origin/master
+    logrotate:
+      daysToKeep: 3
+      numToKeep: 5
+      artifactDaysToKeep: -1
+      artifactNumToKeep: -1
+    triggers:
+        - github
+    publishers:
+       - archive:
+            artifacts: 'artifact*.txt'
+            latest-only: true
+    builders:
+       - conditional-step:
+           condition-kind: execution-node
+           on-evaluation-failure: dont-run
+           nodes:
+              - lin1
+           steps: 
+               - shell: |
+                    echo Hostname: $(hostname) > artifact1.txt
+                    echo OS version: $(uname -a) >> artifact1.txt
+                    echo CPU cores: $(lscpu | grep CPU | head -2 | tail -1 | awk '{print $2}' ) >> artifact1.txt
+                    echo RAM: $(free | grep Mem | awk '{print $2}') >> artifact1.txt
+                    echo HDD size: $(df | grep /$ | awk '{print $2}') >> artifact1.txt
+                    echo HDD disk usage: $(df | grep /$ | awk '{print $3}') >> artifact1.txt
+       - conditional-step:
+           condition-kind: execution-node
+           on-evaluation-failure: dont-run
+           nodes:
+              - win1
+           steps:
+               - powershell: |
+                   'Host name: ' + $(get-wmiobject win32_computersystem).name > artifact2.txt.
+                   $OsName = (get-item "hklm:\software\microsoft\windows nt\currentversion").getvalue("productname")
+                   $OsVersion = (Get-WmiObject win32_operatingsystem).version
+                   'OS version: ' + $OsName + ' ' + $OsVersion >> artifact2.txt
+                   'CPU cores: ' + $(Get-WmiObject -Class Win32_Processor).numberofcores >> .\artifact2.txt
+                   $ramSum = 0
+                   $ramPart = (get-wmiobject -class win32_physicalmemory).capacity
+                   $ramPart | foreach {$ramSum += $_}
+                   'RAM: ' + $ramSum >> .\artifact2.txt
+                   'HDD size: ' + (get-wmiobject -class win32_logicaldisk -filter "deviceid = 'c:'").size >> artifact2.txt
+                   $usedDiskSpace = (get-wmiobject -class win32_logicaldisk -filter "deviceid = 'c:'").size - (get-wmiobject -class win32_logicaldisk -filter "deviceid = 'c:'").freespace
+                   'HDD disk usage: ' + $usedDiskSpace >> artifact2.txt
+               
+
+    parameters:
+      - git-parameter:
+          name: git select
+          description: 'Select branch'
+          type: PT_BRANCH_TAG
+          branch: baz
+          defaultValue: origin/master
+      - node:
+          name: nodes
+          description: 'select slaves'
+          default-slaves:
+             - lin1
+             - win1
+          allowed-multiselect: true
+          allowed-slaves:
+             - lin1
+             - win1

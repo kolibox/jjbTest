@@ -1,0 +1,16 @@
+- job-template:
+     name: 'j1'
+     builders:
+        - shell: 'pwd'
+                  
+- job-template:
+     name: 'j2'
+     builders:
+        - shell: whoami
+       
+
+- project:
+    name: multi-job
+    jobs:
+      - 'j1'
+      - 'j2'

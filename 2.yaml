@@ -1,0 +1,53 @@
+- job:
+    scm:
+       - git:
+           url: https://github.com/kolibox/jjbTest.git
+           branches:
+              - origin/master
+    project-type: freestyle
+    defaults: global
+    description: 'Do not edit this job through the web!'
+    disabled: false
+    display-name: 'Windows job'
+    concurrent: true
+    quiet-period: 5
+    block-downstream: false
+    block-upstream: false
+    retry-count: 3
+    node: win1
+    logrotate:
+      daysToKeep: 3
+      numToKeep: 5
+      artifactDaysToKeep: -1
+      artifactNumToKeep: -1
+    builders:
+#        - batch: "echo Host name: %computername% > artifact.txt"
+#        - batch: "systeminfo >> artifact.txt" 
+        - powershell: |
+               #$c = systeminfo
+               #'Host name: ' + $c[1].split(':')[1] >  .\artifact.txt
+               'Host name: ' + $(get-wmiobject win32_computersystem).name > artifact.txt 
+               #'OS version: ' + $c[2].split(':')[1] + $c[3].split(':')[1]>> .\artifact.txt
+               $OsName = (get-item "hklm:\software\microsoft\windows nt\currentversion").getvalue("productname")
+               $OsVersion = (Get-WmiObject win32_operatingsystem).version
+               'OS version: ' + $OsName + ' ' + $OsVersion >> artifact.txt
+               #$k = Get-WmiObject -Class Win32_Processor | Select-Object -Property NumberOfCores
+               'CPU cores: ' + $(Get-WmiObject -Class Win32_Processor).numberofcores >> .\artifact.txt
+               #'RAM: ' + $c[24].split(':')[1] >>  .\artifact.txt 
+               $ramSum = 0
+               $ramPart = (get-wmiobject -class win32_physicalmemory).capacity
+               $ramPart | foreach {$ramSum += $_}
+               'RAM: ' + $ramSum >> .\artifact.txt
+               #$soso = (get-wmiobject -class win32_logicaldisk -filter "deviceid = 'c:'").size
+               #$soso
+               'HDD size: ' + (get-wmiobject -class win32_logicaldisk -filter "deviceid = 'c:'").size >> artifact.txt
+               $usedDiskSpace = (get-wmiobject -class win32_logicaldisk -filter "deviceid = 'c:'").size - (get-wmiobject -class win32_logicaldisk -filter "deviceid = 'c:'").freespace
+               'HDD disk usage: ' + $usedDiskSpace >> artifact.txt
+    name: job name 2
+    triggers:
+       - github
+    publishers:
+       - archive:
+            artifacts: 'artifact.txt'
+            latest-only: true
+

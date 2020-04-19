@@ -1,0 +1,47 @@
+#- scm:
+#    name: first-scm
+#    scm:
+#       - git:
+#           url: ssh://soso@github.com/kolibox/jjbTest.git
+#           branches:
+#               - origin/master
+
+
+
+- job:
+    scm:
+        - git:
+             url: https://github.com/kolibox/jjbTest.git
+             branches:
+                 - origin/master
+    project-type: freestyle
+    defaults: global
+    description: 'Do not edit this job through the web!'
+    disabled: false
+    display-name: 'Linux job'
+    concurrent: true
+    quiet-period: 5
+    block-downstream: false
+    block-upstream: false
+    retry-count: 3
+    node: lin1
+    logrotate:
+      daysToKeep: 3
+      numToKeep: 5
+      artifactDaysToKeep: -1
+      artifactNumToKeep: -1
+    builders:
+        - shell: "echo Hostname: $(hostname) > artifact.txt"
+        - shell: "echo OS version: $(uname -a) >> artifact.txt"
+        - shell: "echo CPU cores: $(lscpu | grep CPU | head -2 | tail -1 | awk '{print $2}' ) >> artifact.txt"
+        - shell: "echo RAM: $(free | grep Mem | awk '{print $2}') >> artifact.txt"
+        - shell: "echo HDD size: $(df -h | grep /$ | awk '{print $2}') >> artifact.txt"
+        - shell: "echo HDD disk usage: $(df -h | grep /$ | awk '{print $3}') >> artifact.txt"
+    name: job name
+    triggers:
+        - github
+    publishers:
+       - archive:
+            artifacts: 'artifact.txt'
+            latest-only: true
+
